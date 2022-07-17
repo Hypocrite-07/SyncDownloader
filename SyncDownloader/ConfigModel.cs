@@ -48,20 +48,20 @@ namespace SyncDownloader
 
     internal class ConfigModel
     {
-
-        private string ConfigFile;
         public Config.Info ConfigInfo { get; set; }
-        private Config.DownloadInfo ConfigDI { get; set; }
-        private Config.ProjectInfo ConfigPI { get; set; }
-
-        public bool TempedPatch = false;
+        private Config.DownloadInfo _configDI { get; set; }
+        private Config.ProjectInfo _configPI { get; set; }
+        private bool _tempedPatch = false;
+        private string _configFile;
+ 
+        
         private string origPathPI;
         private string tempPathPI;
-        private bool IsNeedUpdate = true;
+        private bool _isNeedUpdate = true;
 
         public ConfigModel(string filename)
         {
-            this.ConfigFile = filename;
+            this._configFile = filename;
             ParseFull();
         }
 
@@ -76,30 +76,39 @@ namespace SyncDownloader
             } catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
-                Utils.OtherUtils.EndApp(true, 404);
+                OtherUtils.EndApp(true, 404);
             }
+        }
+
+        public bool HasUpdate()
+        {
+            DownloadPatchInfo();
+            if (Equals(ConfigInfo.NeedlyUpdate, _isNeedUpdate)){}
+            else
+                ConfigInfo.NeedlyUpdate = _isNeedUpdate;
+           return ConfigInfo.NeedlyUpdate;
         }
 
         private void ParseDIConfig()
         {
-            var jsonConfig = File.ReadAllText(ConfigFile, Encoding.UTF8);
-            ConfigDI = JsonSerializer.Deserialize<Config.DownloadInfo>(jsonConfig)!;
+            var jsonConfig = File.ReadAllText(_configFile, Encoding.UTF8);
+            _configDI = JsonSerializer.Deserialize<Config.DownloadInfo>(jsonConfig)!;
             if(Program.IsDebug)
             {
                 Console.WriteLine(
                     $"\nConfig Download Info Exists: {File.Exists(jsonConfig)}\n" +
-                    $"WebHome Url: {ConfigDI.UrlWebServer}\n" +
-                    $"WebDir: {ConfigDI.WebDir}\n" +
-                    $"DirInstallation: {ConfigDI.DirInstallation}\n");
+                    $"WebHome Url: {_configDI.UrlWebServer}\n" +
+                    $"WebDir: {_configDI.WebDir}\n" +
+                    $"DirInstallation: {_configDI.DirInstallation}\n");
             }
         }
 
         private void CreateDirInstall()
         {
-            bool isExists = Directory.Exists($"{ConfigDI.DirInstallation}");
+            bool isExists = Directory.Exists($"{_configDI.DirInstallation}");
             if (isExists == false)
             {
-                Directory.CreateDirectory($"{ConfigDI.DirInstallation}");
+                Directory.CreateDirectory($"{_configDI.DirInstallation}");
                 isExists = true;
             }
             if (Program.IsDebug)
@@ -110,47 +119,47 @@ namespace SyncDownloader
 
         private void DownloadPatchInfo()
         {
-            var path = $"{ConfigDI.DirInstallation}\\patch-info";
+            var path = $"{_configDI.DirInstallation}\\patch-info";
             origPathPI = path;
             if (File.Exists($"{path}"))
             {
                 path = $"{path}.temp";
                 tempPathPI = path;
-                TempedPatch = true;
+                _tempedPatch = true;
             }
-            var url = new Uri(@$"{ConfigDI.UrlWebServer}{ConfigDI.WebDir}/patch-info");
+            var url = new Uri(@$"{_configDI.UrlWebServer}{_configDI.WebDir}/patch-info");
             Console.WriteLine(url);
             Downloader.Download(url, path);
             if (Program.IsDebug)
             {
                 Console.WriteLine(
                     "\nPatch Info Installed.\n" +
-                    $"Temped Patch: {TempedPatch}\n");
+                    $"Temped Patch: {_tempedPatch}\n");
             }
-            if (TempedPatch)
+            if (_tempedPatch)
             { 
                 if(Verifyer.isNewerVersion(ParsePatch(origPathPI), ParsePatch(tempPathPI)))
                 {
                     ToDeletePath(origPathPI, "Installed new verison already.");
                     FileSystem.Rename(tempPathPI, origPathPI);
-                    IsNeedUpdate = true;
+                    _isNeedUpdate = true;
                 }
                 else
                 {
                     if(Equals(CipherUtils.Get256HashSumFile(origPathPI), CipherUtils.Get256HashSumFile(tempPathPI)))
                     {
                         ToDeletePath(tempPathPI, "Installed this verison already.");
-                        IsNeedUpdate = false;
+                        _isNeedUpdate = false;
                     }
                     else
                     {
                         ToDeletePath(origPathPI, "Hash's not match.");
                         FileSystem.Rename(tempPathPI, origPathPI);
-                        IsNeedUpdate = true;
+                        _isNeedUpdate = true;
                     }
                 }
             }
-            ConfigPI = ParsePatch(origPathPI);
+            _configPI = ParsePatch(origPathPI);
         }
 
         
@@ -164,7 +173,7 @@ namespace SyncDownloader
 
         private void SyncParse()
         {
-            ConfigInfo = new Config.Info { DownloadInfo = ConfigDI, ProjectInfo = ConfigPI, NeedlyUpdate = IsNeedUpdate };
+            ConfigInfo = new Config.Info { DownloadInfo = _configDI, ProjectInfo = _configPI, NeedlyUpdate = _isNeedUpdate };
         }
     }
 }

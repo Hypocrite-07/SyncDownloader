@@ -10,7 +10,7 @@ namespace SyncDownloader.Utils
     {
         public static string GetFormatedPath(string path)
         {
-            return path.Replace(Program.directory + "\\", "");
+            return path.Replace(Program.Dir + "\\", "");
         }
 
         public static void ToDeletePath(string path, string reason)

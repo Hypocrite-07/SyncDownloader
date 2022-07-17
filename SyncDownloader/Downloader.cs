@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualBasic;
+using SyncDownloader.Utils;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -17,9 +18,9 @@ namespace SyncDownloader
         public static bool NeedUpdateBrokedFiles => needUpdateBrokedFiles;
         public static bool HasTroubles => hasTrouble;
 
-        private static Config.DownloadInfo downloadInfo;
-        private static Config.ProjectInfo projectInfo;
-        private static Config.jsonFileInfo[] brokedFiles;
+        private static DownloadInfo downloadInfo;
+        private static ProjectInfo projectInfo;
+        private static jsonFileInfo[] brokedFiles;
         private static bool hasTrouble = false;
         private static bool needUpdateBrokedFiles = false;
         private static Stopwatch sw;
@@ -63,12 +64,12 @@ namespace SyncDownloader
                         Console.WriteLine($"{_path} has trouble.\n{ex.Message}\n");
                 }
             }
-            jsonFileInfo[] brokedFiles = new jsonFileInfo[_brokedFiles.Count];
+            jsonFileInfo[] __brokedFiles = new jsonFileInfo[_brokedFiles.Count];
             for(int x = 0; x < _brokedFiles.Count; x++)
             {
-                brokedFiles[x] = _brokedFiles.ToArray().GetValue(x) as jsonFileInfo;
+                __brokedFiles[x] = _brokedFiles.ToArray().GetValue(x) as jsonFileInfo;
             }
-            return brokedFiles;
+            return __brokedFiles;
         }
 
         public static void CheckSumsAndDownload()
@@ -80,17 +81,40 @@ namespace SyncDownloader
 
         public static void CheckFiles()
         {
-            if(CheckHashSums().Length > 0)
+            var bf = CheckHashSums();
+            if (bf.Length > 0)
                 needUpdateBrokedFiles = true;
+            else
+                needUpdateBrokedFiles = false;
+            brokedFiles = bf;
         }
 
         public static void DownloadFiles()
         {
-            foreach(var file in projectInfo.Entries)
+            if (Program.NeedlyUpdate)
             {
-                DownloadFile(file);
+                foreach (var file in brokedFiles)
+                {
+                    DownloadFile(file);
+                }
+                if (needUpdateBrokedFiles)
+                    CheckFiles();
+
             }
+            if (needUpdateBrokedFiles)
+            {
+                foreach (var file in brokedFiles)
+                {
+                    DownloadFile(file);
+                }
+            }
+            
+            if (hasTrouble)
+                return;
+            needUpdateBrokedFiles = false;
         }
+
+
     
 
         private static void DownloadFile(jsonFileInfo file)
