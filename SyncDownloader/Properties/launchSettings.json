@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SyncDownloader": {
+      "commandName": "Project",
+      "commandLineArgs": "-D"
+    }
+  }
+}
